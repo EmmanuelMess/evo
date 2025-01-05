@@ -58,9 +58,14 @@ def parser() -> argparse.ArgumentParser:
         "--merge", help="merge the trajectories in a single trajectory",
         action="store_true")
     algo_opts.add_argument(
+        "--project_transform_order", type=str,
+        choices=["project_before_transform", "project_after_transform"],
+        default="project_after_transform",
+        help="Order of projection relative to potential 3D alignment & transformation steps.")
+    algo_opts.add_argument(
         "--project_to_plane", type=str, choices=["xy", "xz", "yz"],
         help="Projects the trajectories to 2D in the desired plane. "
-        "This is done after potential 3D alignment & transformation steps.")
+        "This is done in the order defined by --project_transform_order.")
     algo_opts.add_argument("--downsample", type=int,
                            help="Downsample trajectories to max N poses.")
     algo_opts.add_argument(

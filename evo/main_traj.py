@@ -29,6 +29,7 @@ from pathlib import Path
 
 from natsort import natsorted
 
+from evo.core.trajectory import PoseTrajectory3D
 from evo.tools.settings import SETTINGS
 
 logger = logging.getLogger(__name__)
@@ -111,6 +112,16 @@ def load_trajectories(args):
             bag.close()
     return trajectories, ref_traj
 
+def project_trajectory(args, ref_traj: PoseTrajectory3D, trajectories: 'OrderedDict'):
+    from evo.core import trajectory
+
+    plane = trajectory.Plane(args.project_to_plane)
+    logger.debug(SEP)
+    logger.debug("Projecting trajectories to %s plane.", plane.value)
+    for traj in trajectories.values():
+        traj.project(plane)
+    if ref_traj:
+        ref_traj.project(plane)
 
 # TODO refactor
 def print_traj_info(name, traj, verbose=False, full_check=False):
@@ -192,6 +203,15 @@ def run(args):
     logger.debug(SEP)
 
     trajectories, ref_traj = load_trajectories(args)
+
+    if (args.project_to_plane and
+            (args.project_transform_order not in
+             ["project_before_transform", "project_after_transform"])):
+        die("Either choose project before transform or project after transform")
+
+    if args.project_to_plane and args.project_transform_order == "project_before_transform":
+        logger.debug("Project before transform")
+        project_trajectory(args, ref_traj, trajectories)
 
     if args.downsample:
         logger.debug(SEP)
@@ -287,15 +307,9 @@ def run(args):
             traj.transform(transform, right_mul=args.transform_right,
                            propagate=args.propagate_transform)
 
-    # Note: projection is done after potential alignment & transformation steps.
-    if args.project_to_plane:
-        plane = trajectory.Plane(args.project_to_plane)
-        logger.debug(SEP)
-        logger.debug("Projecting trajectories to %s plane.", plane.value)
-        for traj in trajectories.values():
-            traj.project(plane)
-        if ref_traj:
-            ref_traj.project(plane)
+    if args.project_to_plane and args.project_transform_order == "project_after_transform":
+        logger.debug("Project after transform")
+        project_trajectory(args, ref_traj, trajectories)
 
     for name, traj in trajectories.items():
         print_traj_info(to_compact_name(name, args), traj, args.verbose,
